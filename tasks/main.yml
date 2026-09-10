@@ -1,0 +1,206 @@
+---
+# tasks file for the `devops` role
+#
+# Every component is gated on `devops__enabled.<component>`, which is the
+# profile's component set with `devops_components` merged over it, and carries
+# its own tag so a single tool can be re-run with `--tags docker`.
+
+- name: Preflight
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [always]
+
+- name: Base packages
+  ansible.builtin.include_tasks:
+    file: base/packages.yml
+    apply:
+      tags: [devops, base, packages]
+  when: devops__enabled.base | default(false) | bool
+  tags: [devops, base, packages]
+
+- name: User account
+  ansible.builtin.include_tasks:
+    file: base/user.yml
+    apply:
+      tags: [devops, base, user]
+  when: devops__enabled.user | default(false) | bool
+  tags: [devops, base, user]
+
+- name: SSH client configuration
+  ansible.builtin.include_tasks:
+    file: base/ssh.yml
+    apply:
+      tags: [devops, base, ssh]
+  when:
+    - devops__enabled.ssh | default(false) | bool
+    - devops_ssh_hosts | length > 0
+  tags: [devops, base, ssh]
+
+- name: Provisioned files
+  ansible.builtin.include_tasks:
+    file: base/files.yml
+    apply:
+      tags: [devops, base, files]
+  when:
+    - devops__enabled.files | default(false) | bool
+    - devops_provision_files | length > 0
+  tags: [devops, base, files]
+
+- name: Shell environment
+  ansible.builtin.include_tasks:
+    file: base/shell.yml
+    apply:
+      tags: [devops, base, shell]
+  when: devops__enabled.shell | default(false) | bool
+  tags: [devops, base, shell]
+
+- name: Shell environment fragment
+  ansible.builtin.include_tasks:
+    file: base/environment.yml
+    apply:
+      tags: [devops, base, environment]
+  when: devops__enabled.base | default(false) | bool
+  tags: [devops, base, environment]
+
+- name: Git
+  ansible.builtin.include_tasks:
+    file: dev/git.yml
+    apply:
+      tags: [devops, dev, git]
+  when: devops__enabled.git | default(false) | bool
+  tags: [devops, dev, git]
+
+- name: Python tooling
+  ansible.builtin.include_tasks:
+    file: dev/python.yml
+    apply:
+      tags: [devops, dev, python]
+  when: devops__enabled.python | default(false) | bool
+  tags: [devops, dev, python]
+
+- name: Ansible tooling
+  ansible.builtin.include_tasks:
+    file: ops/ansible.yml
+    apply:
+      tags: [devops, ops, ansible]
+  when: devops__enabled.ansible | default(false) | bool
+  tags: [devops, ops, ansible]
+
+- name: Node.js
+  ansible.builtin.include_tasks:
+    file: dev/nodejs.yml
+    apply:
+      tags: [devops, dev, nodejs]
+  when: devops__enabled.nodejs | default(false) | bool
+  tags: [devops, dev, nodejs]
+
+- name: Go
+  ansible.builtin.include_tasks:
+    file: dev/go.yml
+    apply:
+      tags: [devops, dev, go]
+  when: devops__enabled.go | default(false) | bool
+  tags: [devops, dev, go]
+
+- name: Docker
+  ansible.builtin.include_tasks:
+    file: ops/docker.yml
+    apply:
+      tags: [devops, ops, docker]
+  when: devops__enabled.docker | default(false) | bool
+  tags: [devops, ops, docker]
+
+- name: HashiCorp tooling
+  ansible.builtin.include_tasks:
+    file: ops/hashicorp.yml
+    apply:
+      tags: [devops, ops, hashicorp, terraform, packer, vagrant]
+  when: devops__enabled.hashicorp | default(false) | bool
+  tags: [devops, ops, hashicorp, terraform, packer, vagrant]
+
+- name: Kubernetes tooling
+  ansible.builtin.include_tasks:
+    file: ops/kubernetes.yml
+    apply:
+      tags: [devops, ops, kubernetes]
+  when: devops__enabled.kubernetes | default(false) | bool
+  tags: [devops, ops, kubernetes]
+
+- name: Cloud CLIs
+  ansible.builtin.include_tasks:
+    file: ops/cloud.yml
+    apply:
+      tags: [devops, ops, cloud]
+  when: devops__enabled.cloud | default(false) | bool
+  tags: [devops, ops, cloud]
+
+- name: PHP and Composer
+  ansible.builtin.include_tasks:
+    file: dev/php.yml
+    apply:
+      tags: [devops, dev, php, composer]
+  when: devops__enabled.php | default(false) | bool
+  tags: [devops, dev, php, composer]
+
+- name: Warden
+  ansible.builtin.include_tasks:
+    file: dev/warden.yml
+    apply:
+      tags: [devops, dev, warden]
+  when: devops__enabled.warden | default(false) | bool
+  tags: [devops, dev, warden]
+
+- name: Ngrok
+  ansible.builtin.include_tasks:
+    file: dev/ngrok.yml
+    apply:
+      tags: [devops, dev, ngrok]
+  when: devops__enabled.ngrok | default(false) | bool
+  tags: [devops, dev, ngrok]
+
+- name: K6
+  ansible.builtin.include_tasks:
+    file: perf/k6.yml
+    apply:
+      tags: [devops, performance, k6]
+  when: devops__enabled.k6 | default(false) | bool
+  tags: [devops, performance, k6]
+
+- name: Locust
+  ansible.builtin.include_tasks:
+    file: perf/locust.yml
+    apply:
+      tags: [devops, performance, locust]
+  when: devops__enabled.locust | default(false) | bool
+  tags: [devops, performance, locust]
+
+- name: Sitespeed.io
+  ansible.builtin.include_tasks:
+    file: perf/sitespeed.yml
+    apply:
+      tags: [devops, performance, sitespeed]
+  when: devops__enabled.sitespeed | default(false) | bool
+  tags: [devops, performance, sitespeed]
+
+- name: Vault server
+  ansible.builtin.include_tasks:
+    file: server/vault.yml
+    apply:
+      tags: [devops, server, vault]
+  when: devops__enabled.vault_server | default(false) | bool
+  tags: [devops, server, vault]
+
+- name: Semaphore
+  ansible.builtin.include_tasks:
+    file: server/semaphore.yml
+    apply:
+      tags: [devops, server, semaphore]
+  when: devops__enabled.semaphore | default(false) | bool
+  tags: [devops, server, semaphore]
+
+- name: Grafana
+  ansible.builtin.include_tasks:
+    file: server/grafana.yml
+    apply:
+      tags: [devops, server, grafana]
+  when: devops__enabled.grafana | default(false) | bool
+  tags: [devops, server, grafana]

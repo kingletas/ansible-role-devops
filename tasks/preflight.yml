@@ -1,0 +1,73 @@
+---
+- name: Preflight | Gather the facts this role depends on
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - distribution
+      - platform
+      - virtual
+      - service_mgr
+      - user
+      - env
+  when: ansible_facts.distribution is not defined
+
+- name: Preflight | Refuse to run on an unsupported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family in ['Debian', 'RedHat']
+    fail_msg: >-
+      The devops role supports Debian- and RedHat-family Linux only;
+      this host reports os_family={{ ansible_facts.os_family }}.
+    quiet: true
+
+- name: Preflight | Load the OS-family variables
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __devops_os_vars) }}"
+  vars:
+    __devops_os_vars:
+      files:
+        - "os/{{ ansible_facts.distribution }}-{{ ansible_facts.distribution_major_version }}.yml"
+        - "os/{{ ansible_facts.distribution }}.yml"
+        - "os/{{ ansible_facts.os_family }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: Preflight | Load the '{{ devops_profile }}' profile
+  ansible.builtin.include_vars: "profiles/{{ devops_profile }}.yml"
+
+- name: Preflight | Look up the target account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ devops_user }}"
+    fail_key: false
+
+- name: Preflight | Assume a conventional home directory
+  ansible.builtin.set_fact:
+    devops__home: "{{ devops_home if (devops_home | length > 0) else '/home/' ~ devops_user }}"
+    devops__user_exists: "{{ (getent_passwd[devops_user] | default([], true) | length) > 0 }}"
+
+- name: Preflight | Prefer the home directory recorded in passwd
+  ansible.builtin.set_fact:
+    devops__home: "{{ getent_passwd[devops_user][4] }}"
+  when:
+    - devops_home | length == 0
+    - (getent_passwd[devops_user] | default([], true) | length) > 4
+    - getent_passwd[devops_user][4] | length > 0
+
+- name: Preflight | Require the account to exist or be managed by this role
+  ansible.builtin.assert:
+    that:
+      - devops__user_exists | bool or devops_create_user | bool
+    fail_msg: >-
+      devops_user='{{ devops_user }}' does not exist on this host.
+      Set devops_create_user: true to have the role create it, or point
+      devops_user at an existing account.
+    quiet: true
+
+- name: Preflight | Report the resolved configuration
+  ansible.builtin.debug:
+    msg: >-
+      profile={{ devops_profile }} user={{ devops_user }} home={{ devops__home }}
+      arch={{ devops__arch }} systemd={{ devops__systemd }}
+      components={{ devops__enabled | dict2items | selectattr('value') | map(attribute='key') | sort | join(',') }}
+    verbosity: 1

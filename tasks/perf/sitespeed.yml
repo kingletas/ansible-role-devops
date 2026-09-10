@@ -1,0 +1,47 @@
+---
+- name: Sitespeed.io | Require Node.js
+  ansible.builtin.command: node --version
+  register: devops__sitespeed_node
+  changed_when: false
+  failed_when: false
+
+- name: Sitespeed.io | Fail early when Node.js is missing
+  ansible.builtin.fail:
+    msg: >-
+      sitespeed.io is installed through npm; enable the `nodejs` component
+      (devops_components: {nodejs: true}) alongside `sitespeed`.
+  when: devops__sitespeed_node.rc != 0
+
+- name: Sitespeed.io | Install the browser and media dependencies
+  when: devops_sitespeed_browsers | bool
+  block:
+    - name: Sitespeed.io | Register the Google Chrome repository
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+      vars:
+        devops__repo_name: google-chrome
+        devops__repo_description: Google Chrome
+        devops__repo_key_url: https://dl.google.com/linux/linux_signing_key.pub
+        devops__repo_uris: https://dl.google.com/linux/chrome/deb/
+        devops__repo_suites: stable
+        devops__repo_components: main
+        devops__repo_architectures: amd64
+        devops__repo_baseurl: https://dl.google.com/linux/chrome/rpm/stable/x86_64
+
+    - name: Sitespeed.io | Install the capture dependencies
+      ansible.builtin.package:
+        name:
+          - google-chrome-stable
+          - ffmpeg
+          - imagemagick
+          - xvfb
+        state: present
+
+- name: Sitespeed.io | Install sitespeed.io globally for {{ devops_user }}
+  community.general.npm:
+    name: sitespeed.io
+    global: true
+    state: present
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PATH: "{{ devops__home }}/{{ devops_npm_prefix }}/bin:{{ ansible_facts.env.PATH }}"

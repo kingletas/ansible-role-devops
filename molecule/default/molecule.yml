@@ -1,0 +1,34 @@
+---
+role_name_check: 1
+
+driver:
+  name: docker
+
+platforms:
+  - name: devops-instance
+    image: "${MOLECULE_DISTRO:-geerlingguy/docker-ubuntu2404-ansible:latest}"
+    pre_build_image: true
+    command: "${MOLECULE_DOCKER_COMMAND:-/usr/sbin/init}"
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+
+provisioner:
+  name: ansible
+  env:
+    # scripts/link-role puts this checkout at .ansible/roles/devops.
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/.ansible/roles"
+  config_options:
+    defaults:
+      callbacks_enabled: ansible.posix.profile_tasks
+      result_format: yaml
+  inventory:
+    host_vars:
+      devops-instance:
+        devops_profile: container
+        devops_user: root
+        devops_home: /root
+
+verifier:
+  name: ansible

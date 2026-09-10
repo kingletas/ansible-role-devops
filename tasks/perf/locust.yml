@@ -1,0 +1,11 @@
+---
+- name: Locust | Install locust with pipx
+  community.general.pipx:
+    name: locust
+    state: install
+    executable: "{{ devops__pipx_executable }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PIPX_HOME: "{{ devops__home }}/.local/pipx"
+    PIPX_BIN_DIR: "{{ devops__home }}/.local/bin"

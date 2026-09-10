@@ -1,0 +1,38 @@
+---
+galaxy_info:
+  role_name: devops
+  namespace: kingletas
+  author: Luis Tineo
+  description: >-
+    Provisions DevOps tooling and workstation setup -- container runtimes,
+    HashiCorp and Kubernetes CLIs, cloud CLIs, language toolchains and shell
+    environment -- on Debian- and RedHat-family hosts.
+  license: MIT
+  min_ansible_version: "2.15"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+    - name: Fedora
+      versions:
+        - all
+    - name: EL
+      versions:
+        - "9"
+
+  galaxy_tags:
+    - devops
+    - workstation
+    - docker
+    - kubernetes
+    - terraform
+    - development
+    - tooling
+
+dependencies: []

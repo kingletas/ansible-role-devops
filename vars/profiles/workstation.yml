@@ -1,0 +1,28 @@
+---
+# Profile: workstation
+# A personal / new-computer setup -- configures the existing login user and
+# installs the day-to-day development and cloud toolchain.
+devops__profile_components:
+  base: true
+  user: true
+  ssh: true
+  files: true
+  git: true
+  shell: true
+  python: true
+  ansible: true
+  nodejs: true
+  go: false
+  docker: true
+  hashicorp: true
+  kubernetes: true
+  cloud: true
+  php: false
+  warden: false
+  ngrok: false
+  k6: false
+  locust: false
+  sitespeed: false
+  vault_server: false
+  semaphore: false
+  grafana: false

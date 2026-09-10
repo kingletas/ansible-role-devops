@@ -1,0 +1,72 @@
+---
+# RedHat-family (Fedora, RHEL, Rocky, Alma) package names and repositories.
+devops__keyring_dir: /etc/pki/rpm-gpg
+devops__distro_id: "{{ ansible_facts.distribution | lower }}"
+devops__distro_codename: "{{ ansible_facts.distribution_major_version }}"
+
+# EL9 images ship curl-minimal, which conflicts with the full `curl` package,
+# and a few tools only exist in Fedora's repositories -- hence the split.
+devops__base_packages_common:
+  - acl
+  - bash
+  - bash-completion
+  - bat
+  - bind-utils
+  - ca-certificates
+  - fd-find
+  - fzf
+  - gcc
+  - gcc-c++
+  - git
+  - gnupg2
+  - htop
+  - iputils
+  - jq
+  - less
+  - make
+  - mtr
+  - ncdu
+  - nmap-ncat
+  - openssh-clients
+  - pipx
+  - python3-devel
+  - python3-pip
+  - redis
+  - ripgrep
+  - rsync
+  - ShellCheck
+  - sshuttle
+  - sudo
+  - tmux
+  - tree
+  - unzip
+  - vim-enhanced
+  - wget
+  - zip
+  - zsh
+
+devops__base_packages_fedora:
+  - curl
+  - direnv
+
+devops__base_packages_el: []
+
+devops__base_packages: >-
+  {{ devops__base_packages_common
+     + (devops__base_packages_fedora
+        if ansible_facts.distribution == 'Fedora'
+        else devops__base_packages_el) }}
+
+devops__byobu_package: byobu
+devops__docker_repo_url: "https://download.docker.com/linux/{{ 'fedora' if ansible_facts.distribution == 'Fedora' else 'centos' }}"
+devops__hashicorp_repo_url: https://rpm.releases.hashicorp.com
+devops__k8s_repo_url: "https://pkgs.k8s.io/core:/stable:"
+devops__k6_repo_url: https://dl.k6.io/rpm
+devops__ngrok_repo_url: https://ngrok-agent.s3.amazonaws.com
+devops__gh_repo_url: https://cli.github.com/packages
+devops__gcloud_repo_url: https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64
+devops__grafana_repo_url: https://rpm.grafana.com
+
+# Fedora/RHEL ship a single PHP stream; devops_php_version is advisory here.
+devops__php_prefix: php
+devops__php_extra_packages: []

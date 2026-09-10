@@ -1,0 +1,71 @@
+---
+# Shared helper: register a vendor package repository the modern way -- a
+# keyring under {{ devops__keyring_dir }} plus a deb822 source (Debian family)
+# or a yum_repository stanza (RedHat family). No `apt_key`, no global trust.
+#
+# Callers set, via `vars:` on the include:
+#   devops__repo_name         short identifier, used for file names   (required)
+#   devops__repo_description  human label                             (RedHat)
+#   devops__repo_key_url      URL of the signing key                  (required)
+#   devops__repo_key_armored  false when the key is binary            (default true)
+#   devops__repo_uris         repository URI                          (Debian)
+#   devops__repo_suites       suite, e.g. the distro codename         (Debian)
+#   devops__repo_components   component, e.g. `stable` or `main`      (Debian)
+#   devops__repo_architectures                                        (Debian, optional)
+#   devops__repo_baseurl      repository URL                          (RedHat)
+
+- name: Repo | {{ devops__repo_name }} | Ensure the keyring directory exists
+  ansible.builtin.file:
+    path: "{{ devops__keyring_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Repo | {{ devops__repo_name }} | Fetch the signing key
+  ansible.builtin.get_url:
+    url: "{{ devops__repo_key_url }}"
+    dest: "{{ devops__keyring_dir }}/{{ devops__repo_name }}.{{ (devops__repo_key_armored | default(true)) | ternary('asc', 'gpg') }}"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+
+- name: Repo | {{ devops__repo_name }} | Ensure deb822 support is installed
+  # ansible.builtin.deb822_repository needs python-debian on the target.
+  ansible.builtin.apt:
+    name: python3-debian
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Repo | {{ devops__repo_name }} | Register the deb822 source
+  ansible.builtin.deb822_repository:
+    name: "{{ devops__repo_name }}"
+    types: [deb]
+    uris: "{{ devops__repo_uris }}"
+    suites: "{{ devops__repo_suites }}"
+    components: "{{ devops__repo_components | default(omit) }}"
+    architectures: "{{ devops__repo_architectures | default(devops__arch) }}"
+    signed_by: "{{ devops__keyring_dir }}/{{ devops__repo_name }}.{{ (devops__repo_key_armored | default(true)) | ternary('asc', 'gpg') }}"
+    enabled: true
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+  register: devops__repo_deb
+
+- name: Repo | {{ devops__repo_name }} | Refresh the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - ansible_facts.os_family == 'Debian'
+    - devops__repo_deb is changed
+
+- name: Repo | {{ devops__repo_name }} | Register the yum repository
+  ansible.builtin.yum_repository:
+    name: "{{ devops__repo_name }}"
+    description: "{{ devops__repo_description | default(devops__repo_name) }}"
+    baseurl: "{{ devops__repo_baseurl }}"
+    gpgkey: "{{ devops__repo_key_url }}"
+    gpgcheck: true
+    enabled: true
+    state: present
+  when: ansible_facts.os_family == 'RedHat'

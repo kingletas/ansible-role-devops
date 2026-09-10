@@ -1,0 +1,40 @@
+---
+- name: Docker | Register the vendor repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: docker
+    devops__repo_description: Docker CE
+    devops__repo_key_url: "{{ devops__docker_repo_url }}/gpg"
+    devops__repo_uris: "{{ devops__docker_repo_url }}"
+    devops__repo_suites: "{{ devops__distro_codename }}"
+    devops__repo_components: stable
+    devops__repo_baseurl: "{{ devops__docker_repo_url }}/$releasever/$basearch/stable"
+
+- name: Docker | Install the engine, buildx and compose v2
+  ansible.builtin.package:
+    name: "{{ devops_docker_packages }}"
+    state: present
+
+- name: Docker | Configure the daemon
+  ansible.builtin.copy:
+    content: "{{ devops_docker_daemon_options | to_nice_json }}\n"
+    dest: /etc/docker/daemon.json
+    owner: root
+    group: root
+    mode: "0644"
+  when: devops_docker_daemon_options | length > 0
+  notify: Restart docker
+
+- name: Docker | Let the managed accounts talk to the socket
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ ([devops_user] + devops_docker_users) | unique }}"
+
+- name: Docker | Enable the service
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: devops__systemd | bool

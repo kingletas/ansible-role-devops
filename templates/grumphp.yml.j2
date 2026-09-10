@@ -1,0 +1,81 @@
+# {{ ansible_managed }}
+parameters:
+    magento_dir: {{ devops_php_app_dir }}
+    bin_dir: '{{ devops_composer_home }}/vendor/bin'
+    hide_circumvention_tip: false
+    process_timeout: 600
+    ascii: ~
+    tasks:
+      composer:
+          file: {{ devops_php_app_dir }}/composer.json
+          no_check_all: true
+          no_check_lock: false
+          no_check_publish: false
+          with_dependencies: false
+          strict: false
+      git_blacklist:
+          keywords:
+              - 'die('
+              - 'var_dump('
+              - 'exit;'
+              - 'console.log('
+      phpcs:
+          standard: '{{ devops_php_coding_standard }}'
+          report: summary
+          error_severity: 5
+          warning_severity: 0
+          whitelist_patterns:
+{% for namespace in devops_php_code_namespaces %}
+            - /^app\/code\/{{ namespace }}\/(.*)/
+{% else %}
+            - /^app\/code\/(.*)/
+{% endfor %}
+      phpmd:
+          ruleset:
+            - naming
+            - codesize
+            - design
+            - unusedcode
+          whitelist_patterns:
+{% for namespace in devops_php_code_namespaces %}
+            - /^app\/code\/{{ namespace }}\/(.*)/
+{% else %}
+            - /^app\/code\/(.*)/
+{% endfor %}
+      phplint:
+          short_open_tag: false
+          triggered_by: ['php', 'phtml', 'php3', 'php4', 'php5']
+          ignore_patterns: &ignore_patterns
+            - vendor/*.php
+            - var/*.php
+            - bin/*.php
+            - lib/*.php
+            - update/*.php
+            - setup/*.php
+            - critical/*.php
+            - pub/*.php
+      phpcpd:
+          directory: ['app/code/']
+          fuzzy: true
+          min_lines: 5
+          min_tokens: 70
+          triggered_by: ['php']
+      git_branch_name:
+          blacklist:
+              - 'develop'
+              - 'main'
+              - 'master'
+          allow_detached_head: true
+      phpstan:
+          autoload_file: {{ devops_php_config_dir }}/phpstan-bootstrap.php
+          configuration: {{ devops_php_config_dir }}/phpstan.neon
+          level: 4
+          force_patterns: []
+          ignore_patterns: *ignore_patterns
+          triggered_by: ['php']
+          memory_limit: "-1"
+      phpversion:
+          project: '{{ devops_php_version }}'
+      phpcsfixer:
+          config: magento2
+          verbose: true

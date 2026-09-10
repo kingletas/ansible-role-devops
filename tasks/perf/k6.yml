@@ -1,0 +1,17 @@
+---
+- name: K6 | Register the vendor repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: k6
+    devops__repo_description: k6
+    devops__repo_key_url: https://dl.k6.io/key.gpg
+    devops__repo_key_armored: false
+    devops__repo_uris: "{{ devops__k6_repo_url }}"
+    devops__repo_suites: stable
+    devops__repo_components: main
+    devops__repo_baseurl: "{{ devops__k6_repo_url }}/$basearch"
+
+- name: K6 | Install k6
+  ansible.builtin.package:
+    name: k6
+    state: present

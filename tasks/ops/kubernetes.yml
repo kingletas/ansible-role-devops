@@ -1,0 +1,135 @@
+---
+- name: Kubernetes | Resolve the current stable minor release
+  ansible.builtin.uri:
+    url: https://dl.k8s.io/release/stable.txt
+    return_content: true
+  register: devops__k8s_stable
+  when: devops_kubernetes_minor == 'latest'
+  check_mode: false
+
+- name: Kubernetes | Settle on a package channel
+  ansible.builtin.set_fact:
+    devops__k8s_channel: >-
+      {{ devops_kubernetes_minor if devops_kubernetes_minor != 'latest'
+         else (devops__k8s_stable.content | trim | regex_replace('^(v[0-9]+\.[0-9]+).*$', '\1')) }}
+
+- name: Kubernetes | Register the pkgs.k8s.io repository
+  # A flat repository: suite "/" and no components, so it bypasses the shared
+  # helper and speaks to deb822_repository / yum_repository directly.
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: [deb]
+    uris: "{{ devops__k8s_repo_url }}/{{ devops__k8s_channel }}/deb/"
+    suites: "/"
+    signed_by: "{{ devops__k8s_repo_url }}/{{ devops__k8s_channel }}/deb/Release.key"
+    enabled: true
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+  register: devops__k8s_deb
+
+- name: Kubernetes | Refresh the apt cache
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - ansible_facts.os_family == 'Debian'
+    - devops__k8s_deb is changed
+
+- name: Kubernetes | Register the pkgs.k8s.io yum repository
+  ansible.builtin.yum_repository:
+    name: kubernetes
+    description: Kubernetes {{ devops__k8s_channel }}
+    baseurl: "{{ devops__k8s_repo_url }}/{{ devops__k8s_channel }}/rpm/"
+    gpgkey: "{{ devops__k8s_repo_url }}/{{ devops__k8s_channel }}/rpm/repodata/repomd.xml.key"
+    gpgcheck: true
+    state: present
+  when: ansible_facts.os_family == 'RedHat'
+
+- name: Kubernetes | Install kubectl
+  ansible.builtin.package:
+    name: kubectl
+    state: present
+
+- name: Kubernetes | Resolve the current Helm release
+  ansible.builtin.uri:
+    url: https://get.helm.sh/helm-latest-version
+    return_content: true
+  register: devops__helm_latest
+  when: devops_helm_version == 'latest'
+  check_mode: false
+
+- name: Kubernetes | Settle on a Helm version
+  ansible.builtin.set_fact:
+    devops__helm_version: "{{ devops_helm_version if devops_helm_version != 'latest' else (devops__helm_latest.content | trim) }}"
+
+- name: Kubernetes | Check the installed Helm
+  ansible.builtin.command: "{{ devops_bin_dir }}/helm version --short"
+  register: devops__helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Kubernetes | Install Helm
+  when: devops__helm_check.rc != 0 or devops__helm_version not in devops__helm_check.stdout
+  block:
+    - name: Kubernetes | Create a scratch directory for the Helm archive
+      ansible.builtin.file:
+        path: "{{ devops_tmp_dir }}/devops-helm"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Kubernetes | Unpack the Helm archive
+      ansible.builtin.unarchive:
+        src: "https://get.helm.sh/helm-{{ devops__helm_version }}-linux-{{ devops__arch }}.tar.gz"
+        dest: "{{ devops_tmp_dir }}/devops-helm"
+        remote_src: true
+        owner: root
+        group: root
+
+    - name: Kubernetes | Move the Helm binary into place
+      ansible.builtin.copy:
+        src: "{{ devops_tmp_dir }}/devops-helm/linux-{{ devops__arch }}/helm"
+        dest: "{{ devops_bin_dir }}/helm"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Kubernetes | Clean up the Helm scratch directory
+      ansible.builtin.file:
+        path: "{{ devops_tmp_dir }}/devops-helm"
+        state: absent
+
+- name: Kubernetes | Install k9s
+  when: devops_k9s | bool
+  block:
+    - name: Kubernetes | Create a scratch directory for the k9s archive
+      ansible.builtin.file:
+        path: "{{ devops_tmp_dir }}/devops-k9s"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Kubernetes | Unpack k9s
+      ansible.builtin.unarchive:
+        src: "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_{{ devops__arch }}.tar.gz"
+        dest: "{{ devops_tmp_dir }}/devops-k9s"
+        remote_src: true
+        owner: root
+        group: root
+        creates: "{{ devops_bin_dir }}/k9s"
+
+    - name: Kubernetes | Move the k9s binary into place
+      ansible.builtin.copy:
+        src: "{{ devops_tmp_dir }}/devops-k9s/k9s"
+        dest: "{{ devops_bin_dir }}/k9s"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Kubernetes | Clean up the k9s scratch directory
+      ansible.builtin.file:
+        path: "{{ devops_tmp_dir }}/devops-k9s"
+        state: absent

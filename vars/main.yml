@@ -1,0 +1,72 @@
+---
+# Internal variables for the `devops` role.
+#
+# Anything named `devops__*` (double underscore) is implementation detail:
+# it is not part of the role contract and may change between versions.
+
+# Debian/GitHub-release style architecture name for this host.
+devops__arch_map:
+  x86_64: amd64
+  amd64: amd64
+  aarch64: arm64
+  arm64: arm64
+  armv7l: armhf
+devops__arch: "{{ devops__arch_map[ansible_facts.architecture] | default(ansible_facts.architecture) }}"
+
+# Effective component set: profile defaults with the caller's overrides on top.
+devops__enabled: "{{ devops__profile_components | default({}) | combine(devops_components | default({}, true)) }}"
+
+# systemd is unavailable in most build containers; service tasks skip themselves.
+devops__container: "{{ ansible_facts.virtualization_type | default('') in ['docker', 'container', 'containerd', 'podman', 'lxc'] }}"
+devops__systemd: "{{ (ansible_facts.service_mgr | default('')) == 'systemd' and not (devops__container | bool) }}"
+
+devops__all_components:
+  - base
+  - user
+  - ssh
+  - files
+  - git
+  - shell
+  - python
+  - ansible
+  - nodejs
+  - go
+  - docker
+  - hashicorp
+  - kubernetes
+  - cloud
+  - php
+  - warden
+  - ngrok
+  - k6
+  - locust
+  - sitespeed
+  - vault_server
+  - semaphore
+  - grafana
+
+# Shell rc files the role hooks its environment fragment into.
+devops__rc_files: >-
+  {{ ([devops_shell_rc]
+      + (['.zshrc'] if (devops_ohmyzsh | bool
+                        or (devops_shell_default | default('', true)) is search('zsh'))
+         else [])) | unique }}
+
+# `git config --global` settings, identity first then the caller's extras.
+devops__git_settings: >-
+  {{ [{'name': 'user.name', 'value': devops_git_user_name},
+      {'name': 'user.email', 'value': devops_git_user_email}]
+     + (devops_git_config | dict2items(key_name='name', value_name='value')) }}
+
+devops__composer_url: >-
+  https://getcomposer.org/download/{{ devops_composer_version
+                                      if devops_composer_version | length > 0
+                                      else 'latest-stable' }}/composer.phar
+
+devops__starship_targets:
+  amd64: x86_64-unknown-linux-gnu
+  arm64: aarch64-unknown-linux-musl
+devops__starship_target: "{{ devops__starship_targets[devops__arch] | default('x86_64-unknown-linux-gnu') }}"
+
+# pipx binary the community.general.pipx module drives.
+devops__pipx_executable: "{{ (devops_pipx_venv ~ '/bin/pipx') if devops_pipx_bootstrap | bool else 'pipx' }}"

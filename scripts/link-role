@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#
+# link-role -- make this checkout resolvable as the role `devops`.
+#
+# Usage:
+#   scripts/link-role
+#
+# Ansible finds a role by its directory name, so this links .ansible/roles/devops
+# back to this checkout whatever the clone is called.
+
+set -euo pipefail
+
+here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+mkdir -p "$here/.ansible/roles"
+ln -sfn ../.. "$here/.ansible/roles/devops"

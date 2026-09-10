@@ -1,0 +1,72 @@
+---
+name: CI
+
+'on':
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: make check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the pinned tools
+        run: pip install -r requirements-dev.txt
+
+      - name: Install the collections
+        run: make collections
+
+      - name: Check
+        run: make check
+
+  converge:
+    name: make converge (${{ matrix.name }})
+    needs: check
+    # Minutes per platform and one known flake, so pull requests and manual runs only.
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu 24.04
+            distro: geerlingguy/docker-ubuntu2404-ansible:latest
+            command: /usr/sbin/init
+          - name: Debian 12
+            distro: geerlingguy/docker-debian12-ansible:latest
+            command: /usr/sbin/init
+          - name: Rocky Linux 9
+            distro: rockylinux:9
+            command: sleep infinity
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Molecule
+        run: pip install -r requirements-dev.txt
+
+      - name: Converge, re-run and verify
+        run: make converge
+        env:
+          MOLECULE_DISTRO: ${{ matrix.distro }}
+          MOLECULE_DOCKER_COMMAND: ${{ matrix.command }}
+          ANSIBLE_FORCE_COLOR: "1"
+          PY_COLORS: "1"

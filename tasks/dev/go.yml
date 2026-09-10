@@ -1,0 +1,35 @@
+---
+- name: Go | Check the installed toolchain
+  ansible.builtin.command: "{{ devops_go_install_dir }}/go/bin/go version"
+  register: devops__go_version_check
+  changed_when: false
+  failed_when: false
+
+- name: Go | Install the toolchain
+  when: devops__go_version_check.rc != 0 or ('go' ~ devops_go_version ~ ' ') not in (devops__go_version_check.stdout ~ ' ')
+  block:
+    - name: Go | Download the archive
+      ansible.builtin.get_url:
+        url: "https://go.dev/dl/go{{ devops_go_version }}.linux-{{ devops__arch }}.tar.gz"
+        dest: "{{ devops_tmp_dir }}/go{{ devops_go_version }}.tar.gz"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Go | Remove the previous toolchain
+      ansible.builtin.file:
+        path: "{{ devops_go_install_dir }}/go"
+        state: absent
+
+    - name: Go | Unpack into {{ devops_go_install_dir }}
+      ansible.builtin.unarchive:
+        src: "{{ devops_tmp_dir }}/go{{ devops_go_version }}.tar.gz"
+        dest: "{{ devops_go_install_dir }}"
+        remote_src: true
+        owner: root
+        group: root
+
+    - name: Go | Drop the archive
+      ansible.builtin.file:
+        path: "{{ devops_tmp_dir }}/go{{ devops_go_version }}.tar.gz"
+        state: absent

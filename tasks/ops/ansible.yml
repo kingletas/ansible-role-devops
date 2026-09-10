@@ -1,0 +1,38 @@
+---
+- name: Ansible | Install ansible with pipx
+  community.general.pipx:
+    name: ansible
+    state: install
+    install_apps: true
+    executable: "{{ devops__pipx_executable }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PIPX_HOME: "{{ devops__home }}/.local/pipx"
+    PIPX_BIN_DIR: "{{ devops__home }}/.local/bin"
+
+- name: Ansible | Install the requested collections
+  community.general.ansible_galaxy_install:
+    type: collection
+    name: "{{ item.name }}"
+    dest: "{{ item.dest | default(omit) }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PATH: "{{ devops__home }}/.local/bin:{{ ansible_facts.env.PATH }}"
+  loop: "{{ devops_ansible_collections }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ansible | Install the requested roles
+  community.general.ansible_galaxy_install:
+    type: role
+    name: "{{ item.name }}"
+    dest: "{{ item.dest | default(omit) }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PATH: "{{ devops__home }}/.local/bin:{{ ansible_facts.env.PATH }}"
+  loop: "{{ devops_ansible_roles }}"
+  loop_control:
+    label: "{{ item.name }}"

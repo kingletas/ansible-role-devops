@@ -1,0 +1,27 @@
+---
+# Profile: server
+# A provisioned VM / EC2 instance that runs automation rather than a desktop.
+devops__profile_components:
+  base: true
+  user: true
+  ssh: true
+  files: true
+  git: true
+  shell: true
+  python: true
+  ansible: true
+  nodejs: false
+  go: false
+  docker: true
+  hashicorp: true
+  kubernetes: true
+  cloud: true
+  php: false
+  warden: false
+  ngrok: false
+  k6: false
+  locust: false
+  sitespeed: false
+  vault_server: false
+  semaphore: false
+  grafana: false

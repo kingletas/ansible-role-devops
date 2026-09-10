@@ -1,0 +1,125 @@
+---
+- name: PHP | Register the ondrej PPA
+  ansible.builtin.apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+    update_cache: true
+  when: ansible_facts.distribution == 'Ubuntu'
+
+- name: PHP | Register the sury repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: sury-php
+    devops__repo_key_url: https://packages.sury.org/php/apt.gpg
+    devops__repo_key_armored: false
+    devops__repo_uris: https://packages.sury.org/php/
+    devops__repo_suites: "{{ devops__distro_codename }}"
+    devops__repo_components: main
+  when: ansible_facts.distribution == 'Debian'
+
+- name: PHP | Install PHP and its extensions
+  ansible.builtin.package:
+    name: >-
+      {{ [devops__php_prefix ~ '-cli']
+         + (devops_php_packages | reject('equalto', 'cli')
+            | map('regex_replace', '^', devops__php_prefix ~ '-') | list)
+         + devops__php_extra_packages }}
+    state: present
+
+- name: PHP | Create the global Composer home
+  ansible.builtin.file:
+    path: "{{ devops_composer_home }}"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0775"
+
+- name: PHP | Read the published composer.phar checksum
+  ansible.builtin.uri:
+    url: "{{ devops__composer_url }}.sha256sum"
+    return_content: true
+  register: devops__composer_sha
+  check_mode: false
+
+- name: PHP | Install Composer
+  ansible.builtin.get_url:
+    url: "{{ devops__composer_url }}"
+    dest: "{{ devops_bin_dir }}/composer"
+    checksum: "sha256:{{ devops__composer_sha.content.split() | first }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: PHP | Install the global Composer packages
+  community.general.composer:
+    command: require
+    global_command: true
+    arguments: "{{ item }}"
+    working_dir: "{{ devops_composer_home }}"
+  environment:
+    COMPOSER_HOME: "{{ devops_composer_home }}"
+    COMPOSER_ALLOW_SUPERUSER: "1"
+    PATH: "{{ devops_bin_dir }}:{{ ansible_facts.env.PATH }}"
+  loop: "{{ devops_composer_packages }}"
+
+- name: PHP | Read the current phpcs configuration
+  ansible.builtin.command: "{{ devops_composer_home }}/vendor/bin/phpcs --config-show"
+  environment:
+    COMPOSER_HOME: "{{ devops_composer_home }}"
+  register: devops__phpcs_config
+  changed_when: false
+  failed_when: false
+
+- name: PHP | Apply the phpcs defaults
+  ansible.builtin.command: "{{ devops_composer_home }}/vendor/bin/phpcs --config-set {{ item.name }} {{ item.value }}"
+  environment:
+    COMPOSER_HOME: "{{ devops_composer_home }}"
+  loop: "{{ devops_phpcs_config }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - devops__phpcs_config.rc == 0
+    - "(item.name ~ ': ' ~ item.value) not in devops__phpcs_config.stdout"
+  changed_when: true
+
+- name: PHP | Create the shared tooling config directory
+  ansible.builtin.file:
+    path: "{{ devops_php_config_dir }}"
+    state: directory
+    owner: root
+    group: "{{ devops_group }}"
+    mode: "0775"
+  when: devops_php_config_files | bool
+
+- name: PHP | Render the analyser configuration
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ devops_php_config_dir }}/{{ item }}"
+    owner: root
+    group: "{{ devops_group }}"
+    mode: "0664"
+  loop:
+    - grumphp.yml
+    - psalm.xml
+  when: devops_php_config_files | bool
+
+- name: PHP | Install the static phpstan helpers
+  ansible.builtin.copy:
+    src: "php/{{ item }}"
+    dest: "{{ devops_php_config_dir }}/{{ item }}"
+    owner: root
+    group: "{{ devops_group }}"
+    mode: "0664"
+  loop:
+    - phpstan.neon
+    - phpstan-bootstrap.php
+  when: devops_php_config_files | bool
+
+- name: PHP | Install the helper scripts
+  ansible.builtin.copy:
+    src: "bin/{{ item }}"
+    dest: "{{ devops_bin_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ devops_php_scripts }}"

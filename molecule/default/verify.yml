@@ -1,0 +1,36 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Verify | The expected binaries are on the host
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: devops_verify_binaries
+      failed_when: not devops_verify_binaries.stat.exists
+      loop:
+        - /usr/bin/terraform
+        - /usr/bin/kubectl
+        - /usr/local/bin/helm
+        - /usr/local/bin/aws
+        - /root/.config/devops/env.sh
+
+    - name: Verify | The tools actually run
+      ansible.builtin.command: "{{ item }}"
+      changed_when: false
+      loop:
+        - /usr/bin/terraform version
+        - /usr/bin/kubectl version --client=true
+        - /usr/local/bin/helm version --short
+        - /usr/local/bin/aws --version
+
+    - name: Verify | The environment fragment is sourced from .bashrc
+      ansible.builtin.lineinfile:
+        path: /root/.bashrc
+        line: '[ -f "$HOME/.config/devops/env.sh" ] && . "$HOME/.config/devops/env.sh"'
+        state: present
+      check_mode: true
+      register: devops_verify_rc
+      failed_when: devops_verify_rc is changed

@@ -1,0 +1,25 @@
+---
+- name: Git | Set the global identity
+  community.general.git_config:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    scope: global
+  become: true
+  become_user: "{{ devops_user }}"
+  loop: "{{ devops__git_settings }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.value | length > 0
+
+- name: Git | Clone the requested repositories
+  ansible.builtin.git:
+    repo: "{{ item.repo }}"
+    dest: "{{ (item.dest is match('/')) | ternary(item.dest, devops__home ~ '/' ~ item.dest) }}"
+    version: "{{ item.version | default('HEAD') }}"
+    accept_newhostkey: true
+    update: "{{ item.update | default(false) }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  loop: "{{ devops_git_repositories }}"
+  loop_control:
+    label: "{{ item.repo }}"

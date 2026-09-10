@@ -1,0 +1,40 @@
+---
+# One role-owned shell fragment instead of a blockinfile marker per tool: the
+# rc file gets a single `source` line and everything else is a template render.
+- name: Environment | Create the role's config directory
+  ansible.builtin.file:
+    path: "{{ devops__home }}/.config/devops"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0755"
+
+- name: Environment | Render the shell environment fragment
+  ansible.builtin.template:
+    src: env.sh.j2
+    dest: "{{ devops__home }}/.config/devops/env.sh"
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0644"
+
+- name: Environment | Ensure the shell rc files exist
+  ansible.builtin.file:
+    path: "{{ devops__home }}/{{ item }}"
+    state: touch
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0644"
+    access_time: preserve
+    modification_time: preserve
+  loop: "{{ devops__rc_files }}"
+
+- name: Environment | Source the fragment from the shell rc files
+  ansible.builtin.blockinfile:
+    path: "{{ devops__home }}/{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: devops role"
+    block: |
+      [ -f "$HOME/.config/devops/env.sh" ] && . "$HOME/.config/devops/env.sh"
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0644"
+  loop: "{{ devops__rc_files }}"

@@ -1,0 +1,13 @@
+*.retry
+*.pyc
+__pycache__/
+.cache/
+.venv/
+.ansible/
+meta/.galaxy_install_info
+
+# Disposable output: build products, screenshots, scratch notes. Nothing here is committed.
+local.d/
+
+# Shell scripts are source here, even where a global excludes file hides them.
+!*.sh

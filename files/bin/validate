@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#
+# Lint the PHP files changed on this branch.
+#   validate [base-ref]        # defaults to origin/HEAD, then main, then develop
+set -euo pipefail
+
+base_ref="${1:-}"
+if [ -z "${base_ref}" ]; then
+    for candidate in "$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)" main develop master; do
+        [ -n "${candidate}" ] || continue
+        if git rev-parse --verify --quiet "${candidate}" >/dev/null; then
+            base_ref="${candidate}"
+            break
+        fi
+    done
+fi
+
+if [ -z "${base_ref}" ]; then
+    echo "validate: could not work out a base ref; pass one explicitly" >&2
+    exit 2
+fi
+
+mapfile -t changed < <(git diff --name-only --diff-filter=d "${base_ref}...HEAD" -- '*.php')
+
+if [ "${#changed[@]}" -eq 0 ]; then
+    echo "validate: no PHP files changed against ${base_ref}"
+    exit 0
+fi
+
+status=0
+for file in "${changed[@]}"; do
+    [ -e "${file}" ] || continue
+    echo "==> ${file}"
+    php -l "${file}" || status=1
+    command -v phpcs >/dev/null 2>&1 && { phpcs -n "${file}" || status=1; }
+    command -v phpstan >/dev/null 2>&1 && { phpstan analyse --no-progress "${file}" || status=1; }
+done
+
+exit "${status}"

@@ -1,0 +1,17 @@
+---
+- name: HashiCorp | Register the vendor repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: hashicorp
+    devops__repo_description: HashiCorp
+    devops__repo_key_url: "{{ devops__hashicorp_repo_url }}/gpg"
+    devops__repo_uris: "{{ devops__hashicorp_repo_url }}"
+    devops__repo_suites: "{{ devops__distro_codename }}"
+    devops__repo_components: main
+    devops__repo_baseurl: "{{ devops__hashicorp_repo_url }}/{{ 'fedora' if ansible_facts.distribution == 'Fedora' else 'RHEL' }}/$releasever/$basearch/stable"
+
+- name: HashiCorp | Install the selected products
+  ansible.builtin.package:
+    name: "{{ devops_hashicorp_packages | dict2items | selectattr('value') | map(attribute='key') | list }}"
+    state: present
+  when: devops_hashicorp_packages | dict2items | selectattr('value') | list | length > 0

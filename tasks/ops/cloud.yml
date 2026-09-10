@@ -1,0 +1,84 @@
+---
+- name: Cloud | Look for an existing AWS CLI
+  # Absolute path on purpose: sudo's secure_path on RHEL derivatives does not
+  # include /usr/local/bin, so a bare `aws` would look uninstalled every run.
+  ansible.builtin.command: "{{ devops_bin_dir }}/aws --version"
+  register: devops__aws_check
+  changed_when: false
+  failed_when: false
+  when: devops_aws_cli | bool
+
+- name: Cloud | Install the AWS CLI v2
+  when:
+    - devops_aws_cli | bool
+    - devops__aws_check.rc != 0 or devops_aws_cli_update | bool
+  block:
+    - name: Cloud | Download the AWS CLI bundle
+      ansible.builtin.get_url:
+        url: "https://awscli.amazonaws.com/awscli-exe-linux-{{ ansible_facts.architecture }}.zip"
+        dest: "{{ devops_tmp_dir }}/awscliv2.zip"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Cloud | Unpack the AWS CLI bundle
+      ansible.builtin.unarchive:
+        src: "{{ devops_tmp_dir }}/awscliv2.zip"
+        dest: "{{ devops_tmp_dir }}"
+        remote_src: true
+        creates: "{{ devops_tmp_dir }}/aws/install"
+
+    - name: Cloud | Run the AWS CLI installer
+      ansible.builtin.command:
+        cmd: "{{ devops_tmp_dir }}/aws/install --update --bin-dir {{ devops_bin_dir }}"
+      changed_when: true
+
+    - name: Cloud | Clean up the AWS CLI bundle
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ devops_tmp_dir }}/awscliv2.zip"
+        - "{{ devops_tmp_dir }}/aws"
+
+- name: Cloud | Install the Google Cloud CLI
+  when: devops_gcloud_cli | bool
+  block:
+    - name: Cloud | Register the Google Cloud repository
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+      vars:
+        devops__repo_name: google-cloud-cli
+        devops__repo_description: Google Cloud CLI
+        devops__repo_key_url: >-
+          {{ (ansible_facts.os_family == 'Debian')
+             | ternary('https://packages.cloud.google.com/apt/doc/apt-key.gpg',
+                       'https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg') }}
+        devops__repo_key_armored: "{{ ansible_facts.os_family != 'Debian' }}"
+        devops__repo_uris: "{{ devops__gcloud_repo_url }}"
+        devops__repo_suites: cloud-sdk
+        devops__repo_components: main
+        devops__repo_baseurl: "{{ devops__gcloud_repo_url }}"
+
+    - name: Cloud | Install the Google Cloud CLI
+      ansible.builtin.package:
+        name: google-cloud-cli
+        state: present
+
+- name: Cloud | Install the Azure CLI
+  when: devops_azure_cli | bool
+  block:
+    - name: Cloud | Register the Microsoft repository
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+      vars:
+        devops__repo_name: azure-cli
+        devops__repo_description: Azure CLI
+        devops__repo_key_url: https://packages.microsoft.com/keys/microsoft.asc
+        devops__repo_uris: https://packages.microsoft.com/repos/azure-cli/
+        devops__repo_suites: "{{ devops__distro_codename }}"
+        devops__repo_components: main
+        devops__repo_baseurl: https://packages.microsoft.com/yumrepos/azure-cli
+
+    - name: Cloud | Install the Azure CLI
+      ansible.builtin.package:
+        name: azure-cli
+        state: present

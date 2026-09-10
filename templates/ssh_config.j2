@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+{% for entry in devops_ssh_hosts %}
+Host {{ entry.host }}
+{% for key, value in (entry.options | default({})).items() %}
+    {{ key }} {{ value }}
+{% endfor %}
+
+{% endfor %}

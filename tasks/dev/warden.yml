@@ -1,0 +1,12 @@
+---
+- name: Warden | Clone the repository
+  ansible.builtin.git:
+    repo: "{{ devops_warden_repo }}"
+    dest: "{{ devops_warden_dir }}"
+    version: "{{ devops_warden_version | default('HEAD') }}"
+    update: true
+
+- name: Warden | Make the entrypoint group-readable
+  ansible.builtin.file:
+    path: "{{ devops_warden_dir }}/bin/warden"
+    mode: "0755"

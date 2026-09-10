@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#
+# syntax-check -- parse every example playbook against this checkout.
+#
+# Usage:
+#   scripts/syntax-check
+#
+# No host is contacted. Needs the collections in requirements.yml.
+
+set -euo pipefail
+
+here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+cd "$here"
+
+scripts/link-role
+export ANSIBLE_ROLES_PATH="$here/.ansible/roles"
+export ANSIBLE_HOST_PATTERN_MISMATCH=ignore
+
+for playbook in playbooks/*.yml; do
+  ansible-playbook --syntax-check -i localhost, "$playbook"
+done

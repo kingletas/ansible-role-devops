@@ -1,0 +1,20 @@
+---
+- name: Prepare
+  hosts: all
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: Prepare | Ensure python3 and sudo are available
+      # Stock distribution images are not built for Ansible, so give them the
+      # two things the connection needs before any module runs.
+      ansible.builtin.raw: |
+        set -e
+        if ! command -v python3 >/dev/null 2>&1 || ! command -v sudo >/dev/null 2>&1; then
+            if command -v dnf >/dev/null 2>&1; then
+                dnf install -y python3 sudo
+            elif command -v apt-get >/dev/null 2>&1; then
+                apt-get update && apt-get install -y python3 sudo
+            fi
+        fi
+      changed_when: false

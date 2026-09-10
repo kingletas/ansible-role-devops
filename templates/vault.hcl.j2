@@ -1,0 +1,20 @@
+# {{ ansible_managed }}
+ui               = {{ devops_vault_ui | bool | lower }}
+disable_mlock    = true
+plugin_directory = "{{ devops_vault_config_dir }}/plugins"
+
+storage "file" {
+  path = "{{ devops_vault_config_dir }}/data"
+}
+
+listener "tcp" {
+  address     = "{{ devops_vault_address }}"
+  tls_disable = {{ devops_vault_tls_disable | bool | ternary(1, 0) }}
+{% if not devops_vault_tls_disable | bool %}
+  tls_cert_file = "{{ devops_vault_tls_cert_file }}"
+  tls_key_file  = "{{ devops_vault_tls_key_file }}"
+{% endif %}
+}
+
+api_addr     = "http{{ devops_vault_tls_disable | bool | ternary('', 's') }}://{{ devops_vault_address }}"
+cluster_addr = "http{{ devops_vault_tls_disable | bool | ternary('', 's') }}://{{ devops_vault_address | regex_replace(':[0-9]+$', '') }}:8201"

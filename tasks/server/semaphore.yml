@@ -1,0 +1,42 @@
+---
+- name: Semaphore | Pick the package format for this distribution
+  ansible.builtin.set_fact:
+    devops__semaphore_ext: "{{ (ansible_facts.os_family == 'Debian') | ternary('deb', 'rpm') }}"
+    devops__semaphore_asset: >-
+      semaphore_{{ devops_semaphore_version }}_linux_{{ devops__arch }}.{{
+      (ansible_facts.os_family == 'Debian') | ternary('deb', 'rpm') }}
+
+- name: Semaphore | Download the package
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/semaphoreui/semaphore/releases/download/v{{ devops_semaphore_version }}/{{ devops__semaphore_asset }}
+    dest: "{{ devops_tmp_dir }}/semaphore.{{ devops__semaphore_ext }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Semaphore | Install the package (Debian family)
+  ansible.builtin.apt:
+    deb: "{{ devops_tmp_dir }}/semaphore.{{ devops__semaphore_ext }}"
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Semaphore | Install the package (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ devops_tmp_dir }}/semaphore.{{ devops__semaphore_ext }}"
+    state: present
+    disable_gpg_check: true
+  when: ansible_facts.os_family == 'RedHat'
+
+- name: Semaphore | Create the working directory
+  ansible.builtin.file:
+    path: "{{ devops_semaphore_dir }}"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0750"
+
+- name: Semaphore | Drop the downloaded package
+  ansible.builtin.file:
+    path: "{{ devops_tmp_dir }}/semaphore.{{ devops__semaphore_ext }}"
+    state: absent

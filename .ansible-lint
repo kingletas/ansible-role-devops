@@ -1,0 +1,16 @@
+---
+profile: production
+
+exclude_paths:
+  - .cache/
+  - .github/
+  - molecule/
+
+skip_list:
+  # The shared repository helper builds task names from the repo it is adding,
+  # so the template is not always the last thing in the name.
+  - name[template]
+
+kinds:
+  - vars: "vars/os/*.yml"
+  - vars: "vars/profiles/*.yml"

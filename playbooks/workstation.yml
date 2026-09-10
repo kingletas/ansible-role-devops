@@ -1,0 +1,28 @@
+---
+# New-computer setup: configures the account you are logged in as.
+#   ansible-playbook playbooks/workstation.yml -K
+- name: Set up a development workstation
+  hosts: "{{ target | default('localhost') }}"
+  connection: "{{ (target | default('localhost') == 'localhost') | ternary('local', 'ssh') }}"
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: devops
+      vars:
+        devops_profile: workstation
+        devops_user_sudo: false
+        devops_shell_default: /usr/bin/zsh
+        devops_starship: true
+        devops_git_user_name: Your Name
+        devops_git_user_email: you@example.com
+        devops_components:
+          go: true
+        devops_npm_packages:
+          - yarn
+          - eslint
+        devops_hashicorp_packages:
+          terraform: true
+          packer: true
+          vault: true
+          vagrant: false

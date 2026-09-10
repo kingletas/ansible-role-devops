@@ -1,0 +1,49 @@
+---
+- name: User | Ensure the primary group exists
+  ansible.builtin.group:
+    name: "{{ devops_group }}"
+    state: present
+  when: devops_create_user | bool
+
+- name: User | Ensure the account exists
+  ansible.builtin.user:
+    name: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    shell: "{{ devops_user_shell }}"
+    create_home: true
+    state: present
+  when: devops_create_user | bool
+
+- name: User | Add the supplementary groups
+  ansible.builtin.user:
+    name: "{{ devops_user }}"
+    groups: "{{ devops_user_extra_groups }}"
+    append: true
+  when: devops_user_extra_groups | length > 0
+
+- name: User | Ensure ~/.ssh exists
+  ansible.builtin.file:
+    path: "{{ devops__home }}/.ssh"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0700"
+
+- name: User | Generate an SSH key pair
+  ansible.builtin.user:
+    name: "{{ devops_user }}"
+    generate_ssh_key: true
+    ssh_key_type: "{{ devops_ssh_key_type }}"
+    ssh_key_file: ".ssh/id_{{ devops_ssh_key_type }}"
+    ssh_key_comment: "{{ devops_user }}@{{ ansible_facts.hostname }}"
+  when: devops_generate_ssh_key | bool
+
+- name: User | Grant passwordless sudo
+  ansible.builtin.template:
+    src: sudoers.j2
+    dest: "{{ devops_sudoers_dir }}/90-devops-{{ devops_user }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo --check --file=%s
+  when: devops_user_sudo | bool

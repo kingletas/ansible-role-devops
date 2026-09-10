@@ -1,0 +1,29 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # The container profile plus the components that exercise the vendor
+    # repository helper and the archive installers.
+    devops_components:
+      shell: true
+      hashicorp: true
+      kubernetes: true
+      cloud: true
+    devops_ohmyzsh: false
+    devops_pipx_packages:
+      - yamllint
+    devops_hashicorp_packages:
+      terraform: true
+      packer: false
+      vault: false
+      vagrant: false
+    devops_git_user_name: Molecule
+    devops_git_user_email: molecule@example.com
+
+  tasks:
+    - name: Include the devops role
+      ansible.builtin.include_role:
+        name: devops

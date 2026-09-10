@@ -1,0 +1,27 @@
+---
+# Profile: container
+# A build/CI image: no systemd, no nested Docker, no desktop tooling.
+devops__profile_components:
+  base: true
+  user: false
+  ssh: false
+  files: true
+  git: true
+  shell: false
+  python: true
+  ansible: true
+  nodejs: false
+  go: false
+  docker: false
+  hashicorp: false
+  kubernetes: false
+  cloud: false
+  php: false
+  warden: false
+  ngrok: false
+  k6: false
+  locust: false
+  sitespeed: false
+  vault_server: false
+  semaphore: false
+  grafana: false

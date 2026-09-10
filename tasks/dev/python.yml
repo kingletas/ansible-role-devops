@@ -1,0 +1,45 @@
+---
+# Debian 12+, Ubuntu 24.04 and Fedora mark the system interpreter
+# externally-managed (PEP 668), so CLI tools go through pipx and libraries
+# into an explicit virtualenv rather than `pip install` as root.
+- name: Python | Bootstrap a current pipx
+  # Ubuntu 24.04 still ships pipx 1.4, below what community.general.pipx needs,
+  # so the role keeps its own in a virtualenv and links it onto PATH.
+  when: devops_pipx_bootstrap | bool
+  block:
+    - name: Python | Install pipx into its own virtualenv
+      ansible.builtin.pip:
+        name: pipx
+        state: present
+        virtualenv: "{{ devops_pipx_venv }}"
+        virtualenv_command: /usr/bin/python3 -m venv
+
+    - name: Python | Link pipx onto PATH
+      ansible.builtin.file:
+        src: "{{ devops_pipx_venv }}/bin/pipx"
+        dest: "{{ devops_bin_dir }}/pipx"
+        state: link
+
+- name: Python | Install the CLI tools with pipx
+  community.general.pipx:
+    name: "{{ item }}"
+    state: install
+    executable: "{{ devops__pipx_executable }}"
+  become: true
+  become_user: "{{ devops_user }}"
+  environment:
+    PIPX_HOME: "{{ devops__home }}/.local/pipx"
+    PIPX_BIN_DIR: "{{ devops__home }}/.local/bin"
+  loop: "{{ devops_pipx_packages }}"
+
+- name: Python | Provision the shared virtualenv
+  when: devops_python_venv | length > 0
+  block:
+    - name: Python | Create the virtualenv and install its packages
+      ansible.builtin.pip:
+        name: "{{ devops_python_venv_packages }}"
+        state: present
+        virtualenv: "{{ (devops_python_venv is match('/')) | ternary(devops_python_venv, devops__home ~ '/' ~ devops_python_venv) }}"
+        virtualenv_command: /usr/bin/python3 -m venv
+      become: true
+      become_user: "{{ devops_user }}"

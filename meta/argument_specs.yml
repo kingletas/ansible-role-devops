@@ -1,0 +1,341 @@
+---
+# Role contract. Ansible validates every invocation against this spec before
+# the first task runs, so a typo in a playbook fails immediately and loudly
+# instead of halfway through a provision.
+argument_specs:
+  main:
+    short_description: DevOps tooling and workstation provisioning
+    description:
+      - Installs and configures development, operations and performance tooling.
+      - >-
+        A profile selects a component set; devops_components overrides
+        individual components on top of it.
+    author: ansible-role-devops maintainers
+    options:
+      devops_profile:
+        type: str
+        default: workstation
+        choices: [workstation, server, container]
+        description: Component preset to start from.
+
+      devops_components:
+        type: dict
+        default: {}
+        description: >-
+          Per-component overrides merged over the profile, e.g.
+          {docker: false, php: true}.
+
+      devops_user:
+        type: str
+        description: Account the role configures. Defaults to the invoking user.
+      devops_group:
+        type: str
+        description: Primary group of devops_user.
+      devops_home:
+        type: str
+        default: ""
+        description: Home directory; resolved from passwd when empty.
+      devops_create_user:
+        type: bool
+        default: false
+        description: Create the account instead of expecting it to exist.
+      devops_user_shell:
+        type: str
+        default: /bin/bash
+        description: Login shell used when creating the account.
+      devops_user_extra_groups:
+        type: list
+        elements: str
+        default: []
+        description: Supplementary groups added to devops_user.
+      devops_user_sudo:
+        type: bool
+        default: false
+        description: Install a NOPASSWD sudoers drop-in for devops_user.
+      devops_sudoers_dir:
+        type: str
+        default: /etc/sudoers.d
+      devops_generate_ssh_key:
+        type: bool
+        default: false
+      devops_ssh_key_type:
+        type: str
+        default: ed25519
+        choices: [ed25519, rsa, ecdsa]
+
+      devops_shell_rc:
+        type: str
+        default: .bashrc
+        description: Primary rc file, relative to the home directory.
+      devops_bin_dir:
+        type: str
+        default: /usr/local/bin
+      devops_tmp_dir:
+        type: str
+        default: /tmp
+
+      devops_github_cli:
+        type: bool
+        default: true
+        description: Install the GitHub CLI from GitHub's package repository.
+      devops_extra_packages:
+        type: list
+        elements: str
+        default: []
+      devops_package_cache_valid_time:
+        type: int
+        default: 3600
+
+      devops_provision_files:
+        type: list
+        elements: dict
+        default: []
+        description: Files copied onto the host, typically credentials.
+        options:
+          src:
+            type: str
+            required: true
+          dest:
+            type: str
+            required: true
+            description: Absolute, or relative to the user's home directory.
+          mode:
+            type: str
+            default: "0600"
+
+      devops_ssh_hosts:
+        type: list
+        elements: dict
+        default: []
+        description: Entries written to ~/.ssh/config.d/50-devops.conf.
+        options:
+          host:
+            type: str
+            required: true
+          options:
+            type: dict
+            default: {}
+
+      devops_git_user_name:
+        type: str
+        default: ""
+      devops_git_user_email:
+        type: str
+        default: ""
+      devops_git_config:
+        type: dict
+        default: {}
+        description: Extra `git config --global` key/value pairs.
+      devops_git_repositories:
+        type: list
+        elements: dict
+        default: []
+        options:
+          repo:
+            type: str
+            required: true
+          dest:
+            type: str
+            required: true
+          version:
+            type: str
+            default: HEAD
+          update:
+            type: bool
+            default: false
+
+      devops_shell_default:
+        type: str
+        default: ""
+        description: Login shell to switch to, e.g. /usr/bin/zsh. Empty leaves it alone.
+      devops_ohmyzsh:
+        type: bool
+        default: true
+      devops_ohmyzsh_repo:
+        type: str
+        default: https://github.com/ohmyzsh/ohmyzsh.git
+      devops_byobu_enable:
+        type: bool
+        default: false
+      devops_starship:
+        type: bool
+        default: false
+
+      devops_pipx_bootstrap:
+        type: bool
+        default: true
+        description: >-
+          Install a current pipx into its own virtualenv; the distro package is
+          often older than community.general.pipx supports.
+      devops_pipx_venv:
+        type: str
+        default: /opt/devops/pipx
+      devops_pipx_packages:
+        type: list
+        elements: str
+        description: CLI tools installed with pipx for devops_user.
+      devops_python_venv:
+        type: str
+        default: ""
+        description: Path of a virtualenv to create; empty disables it.
+      devops_python_venv_packages:
+        type: list
+        elements: str
+
+      devops_ansible_collections:
+        type: list
+        elements: dict
+        default: []
+        options:
+          name:
+            type: str
+            required: true
+          dest:
+            type: str
+      devops_ansible_roles:
+        type: list
+        elements: dict
+        default: []
+        options:
+          name:
+            type: str
+            required: true
+          dest:
+            type: str
+
+      devops_nodejs_major:
+        type: str
+        default: "22"
+      devops_nodejs_from_distro:
+        type: bool
+        default: false
+      devops_npm_packages:
+        type: list
+        elements: str
+        default: []
+      devops_npm_prefix:
+        type: str
+        default: .npm-packages
+
+      devops_go_version:
+        type: str
+      devops_go_install_dir:
+        type: str
+        default: /usr/local
+
+      devops_docker_packages:
+        type: list
+        elements: str
+      devops_docker_users:
+        type: list
+        elements: str
+        default: []
+      devops_docker_daemon_options:
+        type: dict
+        default: {}
+
+      devops_hashicorp_packages:
+        type: dict
+        description: Vendor packages to install, keyed by product name.
+
+      devops_kubernetes_minor:
+        type: str
+        default: latest
+        description: pkgs.k8s.io channel, e.g. v1.31, or `latest` to resolve it.
+      devops_helm_version:
+        type: str
+        default: latest
+      devops_k9s:
+        type: bool
+        default: false
+
+      devops_aws_cli:
+        type: bool
+        default: true
+      devops_aws_cli_update:
+        type: bool
+        default: false
+        description: Re-run the AWS CLI installer with --update on every run.
+      devops_gcloud_cli:
+        type: bool
+        default: false
+      devops_azure_cli:
+        type: bool
+        default: false
+
+      devops_php_version:
+        type: str
+      devops_php_packages:
+        type: list
+        elements: str
+        description: Extension suffixes, e.g. `xml` becomes php8.3-xml.
+      devops_composer_home:
+        type: str
+      devops_composer_version:
+        type: str
+        default: ""
+        description: Empty installs the latest stable composer.phar.
+      devops_composer_packages:
+        type: list
+        elements: str
+      devops_phpcs_config:
+        type: list
+        elements: dict
+        options:
+          name:
+            type: str
+            required: true
+          value:
+            type: str
+            required: true
+      devops_php_config_files:
+        type: bool
+        default: true
+        description: Deploy the shared grumphp/psalm/phpstan configuration.
+      devops_php_config_dir:
+        type: str
+      devops_php_app_dir:
+        type: str
+        description: Application root the analysers are pointed at.
+      devops_php_coding_standard:
+        type: str
+      devops_php_code_namespaces:
+        type: list
+        elements: str
+        default: []
+        description: Module vendor namespaces to lint; empty lints all of app/code.
+      devops_php_scripts:
+        type: list
+        elements: str
+        description: Helper scripts from files/bin installed into devops_bin_dir.
+      devops_warden_repo:
+        type: str
+      devops_warden_dir:
+        type: str
+
+      devops_sitespeed_browsers:
+        type: bool
+        default: true
+
+      devops_vault_config_dir:
+        type: str
+      devops_vault_address:
+        type: str
+      devops_vault_ui:
+        type: bool
+      devops_vault_tls_disable:
+        type: bool
+      devops_vault_tls_cert_file:
+        type: str
+      devops_vault_tls_key_file:
+        type: str
+      devops_vault_service_state:
+        type: str
+        choices: [started, stopped]
+      devops_semaphore_version:
+        type: str
+      devops_semaphore_dir:
+        type: str
+      devops_grafana_service_state:
+        type: str
+        choices: [started, stopped]

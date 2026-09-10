@@ -1,0 +1,7 @@
+---
+# Collections the scenario needs; Molecule installs them before creating the instance.
+collections:
+  - name: community.general
+    version: ">=8.0.0"
+  - name: ansible.posix
+  - name: community.docker

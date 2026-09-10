@@ -1,0 +1,16 @@
+---
+- name: Ngrok | Register the vendor repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: ngrok
+    devops__repo_description: ngrok
+    devops__repo_key_url: "{{ devops__ngrok_repo_url }}/ngrok.asc"
+    devops__repo_uris: "{{ devops__ngrok_repo_url }}"
+    devops__repo_suites: buster
+    devops__repo_components: main
+    devops__repo_baseurl: "{{ devops__ngrok_repo_url }}/rpm"
+
+- name: Ngrok | Install the agent
+  ansible.builtin.package:
+    name: ngrok
+    state: present

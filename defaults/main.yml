@@ -1,0 +1,235 @@
+---
+# defaults file for the `devops` role.
+#
+# Every variable is prefixed `devops_`. The public contract (types, choices,
+# required-ness) lives in meta/argument_specs.yml and is validated on every run.
+
+# ---------------------------------------------------------------------------
+# Profile
+#
+# The profile picks a sensible component set (see vars/profiles/<profile>.yml);
+# `devops_components` is merged on top of it, so you can flip any single tool
+# without abandoning the profile:
+#
+#   devops_profile: workstation
+#   devops_components:
+#     sitespeed: true
+#     vagrant: false
+# ---------------------------------------------------------------------------
+devops_profile: workstation
+devops_components: {}
+
+# ---------------------------------------------------------------------------
+# Identity
+#
+# The role configures an existing login user by default (new-computer setup).
+# Set devops_create_user: true to have it manage the account (server/CI hosts).
+# ---------------------------------------------------------------------------
+devops_user: "{{ ansible_facts.env.SUDO_USER | default(ansible_facts.user_id, true) }}"
+devops_group: "{{ devops_user }}"
+devops_home: ""                  # empty => looked up from the passwd database
+devops_create_user: false
+devops_user_shell: /bin/bash
+devops_user_extra_groups: []
+devops_user_sudo: false          # write a NOPASSWD sudoers drop-in for the user
+devops_sudoers_dir: /etc/sudoers.d
+devops_generate_ssh_key: false
+devops_ssh_key_type: ed25519
+
+# Shell rc file the role appends its managed blocks to, relative to $HOME.
+devops_shell_rc: .bashrc
+devops_bin_dir: /usr/local/bin
+devops_tmp_dir: /tmp
+
+# ---------------------------------------------------------------------------
+# Base packages
+# ---------------------------------------------------------------------------
+devops_github_cli: true          # `gh`, from the vendor repository
+devops_extra_packages: []        # appended to the per-distro base list
+devops_package_cache_valid_time: 3600
+
+# ---------------------------------------------------------------------------
+# Files provisioned onto the host (credentials, kubeconfigs, ...)
+#
+#   devops_provision_files:
+#     - src: ~/.secrets/aws-credentials
+#       dest: .aws/credentials
+#       mode: "0600"
+#
+# `dest` is relative to the user's home unless it is an absolute path.
+# ---------------------------------------------------------------------------
+devops_provision_files: []
+
+# SSH client config entries written to ~/.ssh/config.d/ansible-devops.conf
+# (empty list => the file is not managed at all)
+devops_ssh_hosts: []
+# - host: github.com
+#   options:
+#     User: git
+#     IdentityFile: ~/.ssh/id_ed25519
+
+# ---------------------------------------------------------------------------
+# git
+# ---------------------------------------------------------------------------
+devops_git_user_name: ""
+devops_git_user_email: ""
+devops_git_config: {}            # any extra `git config --global` key/values
+devops_git_repositories: []
+# - repo: git@github.com:you/project.git
+#   dest: ~/src/project
+
+# ---------------------------------------------------------------------------
+# Shell experience (zsh + oh-my-zsh, byobu, starship)
+# ---------------------------------------------------------------------------
+devops_shell_default: ""         # e.g. /usr/bin/zsh -- empty leaves it alone
+devops_ohmyzsh: true
+devops_ohmyzsh_repo: https://github.com/ohmyzsh/ohmyzsh.git
+devops_byobu_enable: false
+devops_starship: false
+
+# ---------------------------------------------------------------------------
+# Python
+#
+# Ubuntu 24.04 / Debian 12+ / Fedora ship PEP 668 "externally managed"
+# interpreters, so CLI tools go through pipx and libraries into a role-owned
+# virtualenv instead of `pip install` as root.
+# ---------------------------------------------------------------------------
+devops_pipx_bootstrap: true          # keep a current pipx in its own virtualenv
+devops_pipx_venv: /opt/devops/pipx
+devops_pipx_packages:
+  - ansible-lint
+  - molecule
+  - yamllint
+  - bpytop
+devops_python_venv: ""           # e.g. ~/.venvs/devops -- empty disables it
+devops_python_venv_packages:
+  - boto3
+  - PyMySQL
+  - PyYAML
+
+# ---------------------------------------------------------------------------
+# Ansible (control-node bits)
+# ---------------------------------------------------------------------------
+devops_ansible_collections: []
+# - name: community.general
+# - name: ansible.posix
+devops_ansible_roles: []
+# - name: geerlingguy.docker
+
+# ---------------------------------------------------------------------------
+# Node.js -- installed from NodeSource so the major version is selectable.
+# Set devops_nodejs_from_distro: true to use the distro package instead.
+# ---------------------------------------------------------------------------
+devops_nodejs_major: "22"
+devops_nodejs_from_distro: false
+devops_npm_packages: []
+# npm's global prefix for the managed user, keeping global installs sudo-free
+devops_npm_prefix: .npm-packages
+
+# ---------------------------------------------------------------------------
+# Go
+# ---------------------------------------------------------------------------
+devops_go_version: "1.24.6"
+devops_go_install_dir: /usr/local
+
+# ---------------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------------
+devops_docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+devops_docker_users: []          # extra accounts added to the `docker` group
+devops_docker_daemon_options: {}
+# log-driver: json-file
+# log-opts: {max-size: "10m", max-file: "3"}
+
+# ---------------------------------------------------------------------------
+# HashiCorp tooling -- installed from the vendor repository, so no pinned
+# archive URLs and `apt/dnf upgrade` keeps them current.
+# ---------------------------------------------------------------------------
+devops_hashicorp_packages:
+  terraform: true
+  packer: true
+  vault: false                   # CLI only; see devops_vault_server below
+  vagrant: false
+  consul: false
+  nomad: false
+
+# ---------------------------------------------------------------------------
+# Kubernetes
+#
+# `devops_kubernetes_minor` pins the pkgs.k8s.io channel (they are per-minor);
+# "latest" resolves it from https://dl.k8s.io/release/stable.txt at run time.
+# ---------------------------------------------------------------------------
+devops_kubernetes_minor: latest
+devops_helm_version: latest      # or e.g. v3.19.0
+devops_k9s: false
+
+# ---------------------------------------------------------------------------
+# Cloud CLIs
+# ---------------------------------------------------------------------------
+devops_aws_cli: true
+devops_aws_cli_update: false   # re-run the bundled installer to upgrade in place
+devops_gcloud_cli: false
+devops_azure_cli: false
+
+# ---------------------------------------------------------------------------
+# PHP / Composer (Magento-flavoured dev tooling, all upstream-public)
+# ---------------------------------------------------------------------------
+devops_php_version: "8.3"
+devops_php_packages:
+  - cli
+  - xml
+  - mbstring
+  - curl
+  - intl
+  - zip
+devops_composer_home: /opt/composer
+devops_composer_version: ""      # empty => latest stable
+devops_composer_packages:
+  - friendsofphp/php-cs-fixer
+  - phpstan/phpstan
+  - vimeo/psalm
+  - squizlabs/php_codesniffer
+  - phpmd/phpmd
+  - magento/magento-coding-standard
+devops_phpcs_config:
+  - name: installed_paths
+    value: "{{ devops_composer_home }}/vendor/magento/magento-coding-standard"
+  - name: default_standard
+    value: Magento2
+# Shared analyser configuration deployed to devops_php_config_dir
+devops_php_config_files: true
+devops_php_config_dir: /opt/devops/php
+devops_php_app_dir: /app
+devops_php_coding_standard: Magento2
+devops_php_code_namespaces: []   # module vendors to lint, e.g. [Acme, Widgets]
+devops_php_scripts:
+  - validate
+
+devops_warden_repo: https://github.com/wardenenv/warden.git
+devops_warden_dir: /opt/warden
+
+# ---------------------------------------------------------------------------
+# Performance tooling
+# ---------------------------------------------------------------------------
+devops_sitespeed_browsers: true  # pull google-chrome + ffmpeg/imagemagick
+
+# ---------------------------------------------------------------------------
+# Server components (all off unless the profile turns them on)
+# ---------------------------------------------------------------------------
+devops_vault_config_dir: /etc/vault.d
+devops_vault_address: "127.0.0.1:8200"
+devops_vault_ui: true
+devops_vault_tls_disable: true
+devops_vault_tls_cert_file: /opt/vault/tls/tls.crt
+devops_vault_tls_key_file: /opt/vault/tls/tls.key
+devops_vault_service_state: started
+
+devops_semaphore_version: "2.16.31"
+devops_semaphore_dir: /opt/semaphore
+
+devops_grafana_service_state: started

@@ -1,0 +1,23 @@
+---
+- name: Grafana | Register the vendor repository
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+  vars:
+    devops__repo_name: grafana
+    devops__repo_description: Grafana OSS
+    devops__repo_key_url: "{{ devops__grafana_repo_url }}/gpg.key"
+    devops__repo_uris: "{{ devops__grafana_repo_url }}"
+    devops__repo_suites: stable
+    devops__repo_components: main
+    devops__repo_baseurl: "{{ devops__grafana_repo_url }}"
+
+- name: Grafana | Install the server
+  ansible.builtin.package:
+    name: grafana
+    state: present
+
+- name: Grafana | Enable the service
+  ansible.builtin.service:
+    name: grafana-server
+    state: "{{ devops_grafana_service_state }}"
+    enabled: true
+  when: devops__systemd | bool

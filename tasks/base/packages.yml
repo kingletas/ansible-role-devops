@@ -1,0 +1,54 @@
+---
+- name: Base | Refresh the package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: "{{ devops_package_cache_valid_time }}"
+  when: ansible_facts.os_family == 'Debian'
+  changed_when: false
+
+- name: Base | Enable EPEL
+  # Most of the baseline CLI tools (ripgrep, fd, bat, direnv, ...) live in EPEL
+  # on RHEL derivatives; Fedora ships them in the main repository.
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when:
+    - ansible_facts.os_family == 'RedHat'
+    - ansible_facts.distribution != 'Fedora'
+
+- name: Base | Install the baseline packages
+  ansible.builtin.package:
+    name: "{{ devops__base_packages + devops_extra_packages }}"
+    state: present
+
+- name: Base | Point `python` at python3
+  community.general.alternatives:
+    name: python
+    path: /usr/bin/python3
+    link: /usr/bin/python
+    priority: 20
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Base | Install the GitHub CLI
+  when: devops_github_cli | bool
+  block:
+    - name: Base | Register the GitHub CLI repository
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/repository.yml"
+      vars:
+        devops__repo_name: github-cli
+        devops__repo_description: GitHub CLI
+        devops__repo_key_url: >-
+          {{ (ansible_facts.os_family == 'Debian')
+             | ternary('https://cli.github.com/packages/githubcli-archive-keyring.gpg',
+                       'https://cli.github.com/packages/githubcli-archive-keyring.asc') }}
+        devops__repo_key_armored: "{{ ansible_facts.os_family != 'Debian' }}"
+        devops__repo_uris: "{{ devops__gh_repo_url }}"
+        devops__repo_suites: stable
+        devops__repo_components: main
+        devops__repo_baseurl: "{{ devops__gh_repo_url }}/rpm"
+
+    - name: Base | Install gh
+      ansible.builtin.package:
+        name: gh
+        state: present

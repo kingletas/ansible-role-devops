@@ -1,0 +1,20 @@
+---
+# Provision a build/automation host with a dedicated devops account.
+#   ansible-playbook -i inventory playbooks/server.yml
+- name: Provision a devops server
+  hosts: devops
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: devops
+      vars:
+        devops_profile: server
+        devops_user: devops
+        devops_create_user: true
+        devops_user_sudo: true
+        devops_generate_ssh_key: true
+        devops_ansible_collections:
+          - name: community.general
+          - name: ansible.posix
+          - name: amazon.aws

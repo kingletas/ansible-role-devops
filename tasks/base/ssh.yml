@@ -1,0 +1,38 @@
+---
+- name: SSH | Ensure the include directory exists
+  ansible.builtin.file:
+    path: "{{ devops__home }}/.ssh/config.d"
+    state: directory
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0700"
+
+- name: SSH | Write the managed host entries
+  ansible.builtin.template:
+    src: ssh_config.j2
+    dest: "{{ devops__home }}/.ssh/config.d/50-devops.conf"
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0600"
+
+- name: SSH | Ensure ~/.ssh/config exists
+  ansible.builtin.file:
+    path: "{{ devops__home }}/.ssh/config"
+    state: touch
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0600"
+    access_time: preserve
+    modification_time: preserve
+
+- name: SSH | Pull the managed entries into ~/.ssh/config
+  # Include has to come before any Host block, so it is anchored to the top.
+  ansible.builtin.blockinfile:
+    path: "{{ devops__home }}/.ssh/config"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: devops role"
+    insertbefore: BOF
+    block: |
+      Include ~/.ssh/config.d/*.conf
+    owner: "{{ devops_user }}"
+    group: "{{ devops_group }}"
+    mode: "0600"
