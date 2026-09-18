@@ -1,12 +1,13 @@
 # ansible-role-devops
 
-Provisions a machine with DevOps tooling — and sets up a new computer while it
+Provisions a machine with DevOps tooling, and sets up a new computer while it
 is at it. One role, two entry points: a **workstation** profile that configures
 the account you already log in as, and a **server** profile that creates and
 hardens a dedicated automation account.
 
 Supported platforms: Ubuntu 22.04/24.04, Debian 12/13, Fedora and RHEL 9
-derivatives, on `amd64` and `arm64`.
+derivatives, on `amd64` and `arm64`. CI converges Ubuntu 24.04, Debian 12 and
+Rocky Linux 9. Fedora is supported by the tasks and is not converged in CI.
 
 ## Requirements
 
